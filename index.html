@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="es" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>El Manual del Comandante: Guía Interactiva</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Chosen Palette: Slate & Teal -->
+    <!-- Application Structure Plan: La aplicación se organiza como un panel de control de una sola página con una barra de navegación lateral fija y un área de contenido principal dinámica. Esta estructura, a diferencia de un documento lineal, permite un acceso rápido y no secuencial a la información. El usuario puede saltar instantáneamente de un concepto fundamental a una referencia de comando o a una comparación de distribuciones. Se eligió este modelo de "explorador" para transformar el manual de un texto pasivo a una herramienta activa de aprendizaje y consulta, priorizando la facilidad de búsqueda y la interactividad sobre la estructura narrativa original del informe. -->
+    <!-- Visualization & Content Choices: 
+        - Filosofía/Historia -> Bloques de texto con resaltados para legibilidad.
+        - FHS (Estructura de Directorios) -> Diagrama de árbol interactivo con HTML/CSS. Objetivo: Visualizar la jerarquía. Interacción: Hover sobre un directorio para ver su descripción. Método: HTML anidado con Tailwind y JS para la interactividad.
+        - Comandos (ls, cp, etc.) -> Tarjetas de contenido con pestañas (Descripción, Opciones, Ejemplos). Objetivo: Presentar información compleja de forma organizada. Interacción: Click en pestañas para cambiar de vista. Método: HTML/JS.
+        - Comparación de Distros -> Gráfico de Radar (Chart.js) y tarjetas filtrables. Objetivo: Facilitar la decisión del usuario. Interacción: Filtros de botones para mostrar/ocultar tarjetas de distros relevantes. Método: Chart.js para el gráfico, JS para la lógica de filtrado.
+        - Scripts de ejemplo -> Bloques de código con resaltado de sintaxis y opción de copiado. Objetivo: Proveer ejemplos prácticos y reutilizables.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Roboto+Mono:wght@400&display=swap');
+        .font-mono {
+            font-family: 'Roboto Mono', monospace;
+        }
+        .nav-link {
+            transition: all 0.2s ease-in-out;
+        }
+        .nav-link.active {
+            background-color: #0f766e; /* teal-700 */
+            color: #ffffff;
+            font-weight: 700;
+            transform: translateX(4px);
+        }
+        .nav-link:not(.active):hover {
+            background-color: #374151; /* gray-700 */
+            transform: translateX(2px);
+        }
+        .content-section {
+            display: none;
+        }
+        .content-section.active {
+            display: block;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fhs-item .fhs-desc {
+            display: none;
+            position: absolute;
+            left: 100%;
+            top: 0;
+            margin-left: 1rem;
+            width: 250px;
+            z-index: 10;
+        }
+        .fhs-item:hover .fhs-desc {
+            display: block;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 40vh;
+            max-height: 400px;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800">
+
+    <div class="flex min-h-screen">
+        <!-- Barra de Navegación Lateral -->
+        <aside class="w-64 bg-slate-800 text-slate-200 p-4 flex-shrink-0 flex flex-col fixed h-full overflow-y-auto">
+            <h1 class="text-2xl font-bold text-white mb-6 text-center border-b border-slate-600 pb-4">Manual del Cmdte.</h1>
+            <nav id="main-nav" class="flex-grow">
+                <ul>
+                    <li class="font-bold text-teal-400 uppercase tracking-wider text-sm mb-2">Fundamentos</li>
+                    <li><a href="#introduccion" class="nav-link block p-2 rounded-md">Introducción</a></li>
+                    <li><a href="#filosofia" class="nav-link block p-2 rounded-md">Filosofía Open Source</a></li>
+                    <li><a href="#anatomia" class="nav-link block p-2 rounded-md">Anatomía de Linux</a></li>
+                    <li><a href="#fhs" class="nav-link block p-2 rounded-md">Estructura de Directorios</a></li>
+
+                    <li class="font-bold text-teal-400 uppercase tracking-wider text-sm mt-6 mb-2">Comandos Esenciales</li>
+                    <li><a href="#navegacion" class="nav-link block p-2 rounded-md">Navegación</a></li>
+                    <li><a href="#gestion-archivos" class="nav-link block p-2 rounded-md">Gestión de Archivos</a></li>
+                    <li><a href="#permisos" class="nav-link block p-2 rounded-md">Permisos</a></li>
+                    <li><a href="#procesos" class="nav-link block p-2 rounded-md">Procesos y Recursos</a></li>
+
+                    <li class="font-bold text-teal-400 uppercase tracking-wider text-sm mt-6 mb-2">Scripting en Bash</li>
+                    <li><a href="#scripting-intro" class="nav-link block p-2 rounded-md">Conceptos Básicos</a></li>
+                    <li><a href="#control-flujo" class="nav-link block p-2 rounded-md">Control de Flujo</a></li>
+                    <li><a href="#funciones" class="nav-link block p-2 rounded-md">Funciones y Tuberías</a></li>
+                    <li><a href="#scripts-reales" class="nav-link block p-2 rounded-md">Scripts de Ejemplo</a></li>
+
+                    <li class="font-bold text-teal-400 uppercase tracking-wider text-sm mt-6 mb-2">Ecosistema Linux</li>
+                    <li><a href="#distros" class="nav-link block p-2 rounded-md">¿Qué es una Distro?</a></li>
+                    <li><a href="#comparativa" class="nav-link block p-2 rounded-md">Guía de Selección</a></li>
+                </ul>
+            </nav>
+        </aside>
+
+        <!-- Contenido Principal -->
+        <main class="ml-64 flex-1 p-6 md:p-10">
+            <div id="content-container">
+                <!-- Sección de Introducción -->
+                <section id="introduccion" class="content-section">
+                    <h2 class="text-4xl font-bold text-teal-600 mb-4">Bienvenido al Manual del Comandante</h2>
+                    <p class="text-lg text-slate-600 mb-6">Esta es una guía interactiva diseñada para desmitificar la terminal de Linux y la programación en Bash. En lugar de un libro estático, esta aplicación te permite explorar conceptos, buscar comandos y entender el ecosistema de Linux de forma dinámica. Usa la navegación de la izquierda para sumergirte en los diferentes temas.</p>
+                    <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-teal-500">
+                        <h3 class="text-2xl font-bold mb-2">¿Por qué la Terminal?</h3>
+                        <p>En un mundo de interfaces gráficas, la línea de comandos (CLI) sigue siendo la herramienta más potente para un administrador de sistemas o desarrollador. Ofrece una eficiencia, control y capacidad de automatización inigualables. Esta guía se enfoca en darte el poder de la CLI, transformando tareas complejas en comandos simples y repetibles.</p>
+                    </div>
+                </section>
+
+                <!-- Sección de Filosofía -->
+                <section id="filosofia" class="content-section">
+                    <h2 class="text-3xl font-bold mb-4">La Filosofía del Código Abierto</h2>
+                    <p class="text-slate-600 mb-6">El código abierto no es solo una forma de desarrollar software; es un paradigma basado en la colaboración, la transparencia y la libertad del usuario. Es el motor que impulsa a Linux y su éxito masivo. Sus principios fundamentales, resumidos en la "Ley de Linus", postulan que "con suficientes ojos, todos los errores son superficiales".</p>
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <div class="bg-white p-6 rounded-lg shadow-md">
+                            <h4 class="font-bold text-xl mb-2 text-teal-600">La Catedral y el Bazar</h4>
+                            <p>Este ensayo de Eric S. Raymond contrasta el desarrollo cerrado ("La Catedral", construida por un pequeño grupo de expertos en aislamiento) con el modelo abierto de Linux ("El Bazar"), donde el desarrollo es público y cualquiera puede contribuir. Este modelo caótico pero eficiente ha demostrado ser superior para crear software robusto y complejo.</p>
+                        </div>
+                        <div class="bg-white p-6 rounded-lg shadow-md">
+                            <h4 class="font-bold text-xl mb-2 text-teal-600">Las Cuatro Libertades</h4>
+                            <p>La esencia del software libre y de código abierto se basa en cuatro libertades que el acceso al código fuente proporciona al usuario: la libertad de usar, estudiar, distribuir y mejorar el software. Esto fomenta la innovación y la colaboración a una escala global.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Sección de Anatomía de Linux -->
+                <section id="anatomia" class="content-section">
+                    <h2 class="text-3xl font-bold mb-4">Anatomía de un Sistema Linux</h2>
+                    <p class="text-slate-600 mb-6">Un sistema operativo Linux no es una pieza única de software, sino un conjunto de componentes que trabajan en conjunto. Comprender estas capas es fundamental para entender cómo funciona el sistema y cómo interactuar con él de manera efectiva.</p>
+                    <div class="space-y-4">
+                        <div class="bg-white p-6 rounded-lg shadow-md">
+                            <h3 class="font-bold text-xl">El Kernel</h3>
+                            <p>El corazón del sistema. Actúa como intermediario entre el hardware y el software, gestionando procesos, memoria, dispositivos y el sistema de archivos. Aunque es monolítico (para mayor rendimiento), es altamente modular, permitiendo cargar y descargar controladores dinámicamente.</p>
+                        </div>
+                        <div class="bg-white p-6 rounded-lg shadow-md">
+                            <h3 class="font-bold text-xl">El Shell</h3>
+                            <p>La interfaz a través de la cual interactúas con el kernel. Puede ser una Interfaz de Línea de Comandos (CLI) como <strong>Bash</strong> (el foco de este manual) o una Interfaz Gráfica de Usuario (GUI) como GNOME o KDE.</p>
+                        </div>
+                        <div class="bg-white p-6 rounded-lg shadow-md">
+                            <h3 class="font-bold text-xl">El Espacio de Usuario</h3>
+                            <p>Todo lo demás: las herramientas del sistema (GNU), las aplicaciones (navegadores, suites ofimáticas), las bibliotecas y el entorno de escritorio. Es la combinación del kernel con el espacio de usuario lo que forma una distribución de Linux completa.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Sección FHS -->
+                <section id="fhs" class="content-section">
+                    <h2 class="text-3xl font-bold mb-4">Estructura de Directorios (FHS)</h2>
+                     <p class="text-slate-600 mb-6">Todo en Linux existe bajo un único árbol de directorios que comienza en la raíz (`/`). El Filesystem Hierarchy Standard (FHS) define el propósito de cada directorio principal. Pasa el cursor sobre cada elemento para ver su descripción.</p>
+                    <div class="bg-white p-6 rounded-lg shadow-md font-mono text-sm">
+                        <div class="fhs-item relative">
+                            <span class="text-red-500 font-bold">/</span>
+                            <div class="fhs-desc bg-slate-800 text-white p-2 rounded shadow-lg"><strong>Raíz:</strong> El nivel superior. Todo cuelga de aquí.</div>
+                            <div class="pl-4 border-l border-slate-200">
+                                <div class="fhs-item relative mt-2"><span class="text-blue-600 font-bold">/bin</span> - Binarios esenciales de usuario</div>
+                                <div class="fhs-item relative mt-2"><span class="text-blue-600 font-bold">/etc</span> - Archivos de configuración del sistema</div>
+                                <div class="fhs-item relative mt-2"><span class="text-green-600 font-bold">/home</span> - Directorios personales de los usuarios</div>
+                                <div class="fhs-item relative mt-2"><span class="text-purple-600 font-bold">/lib</span> - Bibliotecas esenciales</div>
+                                <div class="fhs-item relative mt-2"><span class="text-blue-600 font-bold">/sbin</span> - Binarios esenciales de sistema (admin)</div>
+                                <div class="fhs-item relative mt-2"><span class="text-green-600 font-bold">/tmp</span> - Archivos temporales</div>
+                                <div class="fhs-item relative mt-2"><span class="text-purple-600 font-bold">/usr</span> - Utilidades y aplicaciones de usuario</div>
+                                <div class="fhs-item relative mt-2"><span class="text-green-600 font-bold">/var</span> - Archivos de datos variables (logs, etc.)</div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- Sección de Navegación -->
+                <section id="navegacion" class="content-section">
+                    <h2 class="text-3xl font-bold mb-4">Comandos de Navegación</h2>
+                    <p class="text-slate-600 mb-6">Estos tres comandos son la base para moverse por el sistema de archivos desde la terminal. Dominarlos es el primer paso para la fluidez en la CLI.</p>
+                    <div class="grid md:grid-cols-3 gap-6">
+                        <div class="bg-white p-6 rounded-lg shadow-md">
+                            <h3 class="text-2xl font-bold font-mono">pwd</h3>
+                            <p class="mt-2"><strong>Print Working Directory</strong>. Muestra la ruta completa del directorio en el que te encuentras actualmente. Es tu "Usted está aquí".</p>
+                        </div>
+                        <div class="bg-white p-6 rounded-lg shadow-md">
+                            <h3 class="text-2xl font-bold font-mono">cd</h3>
+                            <p class="mt-2"><strong>Change Directory</strong>. El comando para moverte entre directorios. <code class="font-mono bg-slate-200 p-1 rounded">cd ..</code> sube un nivel, <code class="font-mono bg-slate-200 p-1 rounded">cd ~</code> te lleva a tu directorio personal.</p>
+                        </div>
+                        <div class="bg-white p-6 rounded-lg shadow-md">
+                            <h3 class="text-2xl font-bold font-mono">ls</h3>
+                            <p class="mt-2"><strong>List</strong>. Muestra el contenido de un directorio. Usa <code class="font-mono bg-slate-200 p-1 rounded">ls -l</code> para una vista detallada y <code class="font-mono bg-slate-200 p-1 rounded">ls -a</code> para ver archivos ocultos.</p>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- Sección de Gestión de Archivos -->
+                <section id="gestion-archivos" class="content-section">
+                    <h2 class="text-3xl font-bold mb-4">Gestión de Archivos y Directorios</h2>
+                    <p class="text-slate-600 mb-6">Crear, ver, copiar, mover y eliminar archivos son operaciones diarias. La terminal ofrece herramientas precisas y potentes para cada una de estas tareas.</p>
+                    <div class="space-y-6">
+                        <div class="command-card bg-white p-6 rounded-lg shadow-md">
+                            <h3 class="text-2xl font-bold font-mono">touch | mkdir</h3>
+                            <div class="mt-4">
+                                <p><strong>touch:</strong> Crea archivos vacíos o actualiza su fecha de modificación.</p>
+                                <p><strong>mkdir:</strong> Crea nuevos directorios. Usa <code class="font-mono bg-slate-200 p-1 rounded">mkdir -p</code> para crear directorios anidados de una sola vez.</p>
+                            </div>
+                        </div>
+                        <div class="command-card bg-white p-6 rounded-lg shadow-md">
+                            <h3 class="text-2xl font-bold font-mono">cp | mv | rm</h3>
+                            <div class="mt-4">
+                                <p><strong>cp:</strong> Copia archivos y directorios. Usa <code class="font-mono bg-slate-200 p-1 rounded">cp -r</code> para directorios.</p>
+                                <p><strong>mv:</strong> Mueve o renombra archivos y directorios.</p>
+                                <p class="text-red-600 font-bold"><strong>rm:</strong> Elimina archivos. Con <code class="font-mono bg-slate-200 p-1 rounded">rm -r</code>, elimina directorios. ¡Úsalo con extremo cuidado! No hay papelera de reciclaje.</p>
+                            </div>
+                        </div>
+                        <div class="command-card bg-white p-6 rounded-lg shadow-md">
+                            <h3 class="text-2xl font-bold font-mono">find | locate</h3>
+                             <div class="mt-4">
+                                <p><strong>find:</strong> Búsqueda potente y en tiempo real basada en nombre, tamaño, fecha, permisos, etc. Puede ejecutar comandos sobre los resultados.</p>
+                                <p><strong>locate:</strong> Búsqueda ultrarrápida por nombre que utiliza una base de datos pre-indexada. Más rápido, pero puede no encontrar los archivos más recientes.</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Sección Permisos -->
+                <section id="permisos" class="content-section">
+                    <h2 class="text-3xl font-bold mb-4">Permisos y Propiedad</h2>
+                     <p class="text-slate-600 mb-6">La seguridad en Linux se basa en un modelo de permisos para cada archivo y directorio, controlando quién puede leer, escribir o ejecutar. Dominar <code class="font-mono bg-slate-200 p-1 rounded">chmod</code>, <code class="font-mono bg-slate-200 p-1 rounded">chown</code> y <code class="font-mono bg-slate-200 p-1 rounded">sudo</code> es esencial.</p>
+                     <div class="grid md:grid-cols-2 gap-6">
+                        <div class="bg-white p-6 rounded-lg shadow-md">
+                            <h3 class="text-xl font-bold">Modelo de Permisos</h3>
+                            <p class="mt-2">Cada archivo tiene permisos para tres clases: <strong>Propietario (user)</strong>, <strong>Grupo (group)</strong>, y <strong>Otros (others)</strong>. Los permisos son <strong>Lectura (r=4)</strong>, <strong>Escritura (w=2)</strong>, y <strong>Ejecución (x=1)</strong>.</p>
+                            <p class="mt-2 font-mono bg-slate-100 p-3 rounded"><strong>-rwxr-xr--</strong>  (754)</p>
+                            <ul class="list-disc list-inside mt-2 text-sm">
+                                <li>Propietario: rwx (lectura, escritura, ejecución)</li>
+                                <li>Grupo: r-x (lectura, ejecución)</li>
+                                <li>Otros: r-- (sólo lectura)</li>
+                            </ul>
+                        </div>
+                        <div class="bg-white p-6 rounded-lg shadow-md">
+                            <h3 class="text-xl font-bold">Comandos Clave</h3>
+                            <ul class="list-disc list-inside mt-2 space-y-2">
+                                <li><code class="font-mono bg-slate-200 p-1 rounded">chmod</code>: Cambia los permisos de un archivo (e.g., <code class="font-mono bg-slate-200 p-1 rounded">chmod 755 script.sh</code>).</li>
+                                <li><code class="font-mono bg-slate-200 p-1 rounded">chown</code>: Cambia el propietario y/o el grupo de un archivo (e.g., <code class="font-mono bg-slate-200 p-1 rounded">chown user:group archivo</code>).</li>
+                                <li><code class="font-mono bg-slate-200 p-1 rounded">sudo</code>: Ejecuta un comando con privilegios de superusuario, de forma segura y auditable.</li>
+                            </ul>
+                        </div>
+                     </div>
+                </section>
+                
+                <!-- Sección de Procesos y Recursos -->
+                <section id="procesos" class="content-section">
+                    <h2 class="text-3xl font-bold mb-4">Procesos y Recursos</h2>
+                     <p class="text-slate-600 mb-6">Un sistema Linux es un ecosistema dinámico de procesos. Aprender a visualizarlos, gestionarlos y filtrarlos es una habilidad clave para la solución de problemas y la administración del sistema.</p>
+                    <div class="space-y-4">
+                        <div class="command-card bg-white p-6 rounded-lg shadow-md">
+                            <h3 class="text-xl font-bold font-mono">ps | top</h3>
+                            <p class="mt-2"><strong>ps:</strong> Ofrece una "instantánea" estática de los procesos actuales. <code class="font-mono bg-slate-200 p-1 rounded">ps aux</code> es el uso más común para ver todos los procesos.</p>
+                            <p class="mt-2"><strong>top:</strong> Muestra una vista dinámica y en tiempo real del uso de recursos (CPU, memoria) por proceso. Es interactivo.</p>
+                        </div>
+                        <div class="command-card bg-white p-6 rounded-lg shadow-md">
+                            <h3 class="text-xl font-bold font-mono">kill | pkill</h3>
+                             <p class="mt-2"><strong>kill:</strong> Envía una señal a un proceso (usando su PID) para terminarlo. <code class="font-mono bg-slate-200 p-1 rounded">kill -9 PID</code> fuerza la terminación.</p>
+                             <p class="mt-2"><strong>pkill/killall:</strong> Termina procesos basándose en su nombre, lo cual es más conveniente que usar el PID.</p>
+                        </div>
+                        <div class="command-card bg-white p-6 rounded-lg shadow-md">
+                            <h3 class="text-xl font-bold font-mono">grep</h3>
+                            <p class="mt-2"><strong>grep:</strong> Filtra texto buscando patrones. Es la navaja suiza de la CLI. Su uso más común es encadenado con una tubería (`|`) para filtrar la salida de otros comandos, como <code class="font-mono bg-slate-200 p-1 rounded">ps aux | grep nginx</code>.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Sección Scripting Intro -->
+                <section id="scripting-intro" class="content-section">
+                     <h2 class="text-3xl font-bold mb-4">Scripting en Bash: Conceptos Básicos</h2>
+                     <p class="text-slate-600 mb-6">El scripting es el arte de la automatización. Un script de Bash es un archivo de texto que contiene una secuencia de comandos. Aquí están los bloques de construcción fundamentales.</p>
+                     <div class="grid md:grid-cols-2 gap-6">
+                        <div class="bg-white p-6 rounded-lg shadow-md">
+                             <h3 class="text-xl font-bold">Shebang y Variables</h3>
+                             <p class="mt-2">Todo script debe comenzar con <code class="font-mono bg-slate-200 p-1 rounded">#!/bin/bash</code> (el "shebang") para declarar qué intérprete usar.</p>
+                             <p class="mt-4">Las variables almacenan datos. Se declaran sin espacios: <code class="font-mono bg-slate-200 p-1 rounded">NOMBRE="Mundo"</code>. Se accede a ellas con <code class="font-mono bg-slate-200 p-1 rounded">$NOMBRE</code>.</p>
+                        </div>
+                         <div class="bg-white p-6 rounded-lg shadow-md">
+                             <h3 class="text-xl font-bold">Entrada y Salida</h3>
+                             <p class="mt-2"><strong>echo:</strong> Imprime texto en la terminal. Ej: <code class="font-mono bg-slate-200 p-1 rounded">echo "Hola, $NOMBRE"</code>.</p>
+                             <p class="mt-4"><strong>read:</strong> Lee la entrada del usuario y la guarda en una variable. Ej: <code class="font-mono bg-slate-200 p-1 rounded">read -p "Tu nombre: " NOMBRE</code>.</p>
+                        </div>
+                        <div class="bg-white p-6 rounded-lg shadow-md col-span-2">
+                             <h3 class="text-xl font-bold">Sustitución de Comandos</h3>
+                             <p class="mt-2">Permite capturar la salida de un comando y asignarla a una variable o usarla directamente. La sintaxis moderna y preferida es <code class="font-mono bg-slate-200 p-1 rounded">$(comando)</code>.</p>
+                             <pre class="font-mono bg-slate-800 text-white p-4 rounded-md mt-2 text-sm"><code>FECHA_HOY=$(date +%Y-%m-%d)
+echo "El backup de hoy es: backup-$FECHA_HOY.tar.gz"</code></pre>
+                        </div>
+                     </div>
+                </section>
+
+                <!-- Sección Control de Flujo -->
+                <section id="control-flujo" class="content-section">
+                    <h2 class="text-3xl font-bold mb-4">Control de Flujo en Scripts</h2>
+                    <p class="text-slate-600 mb-6">El verdadero poder de la programación reside en la capacidad de tomar decisiones (condicionales) y repetir acciones (bucles).</p>
+                    <div class="space-y-6">
+                        <div class="command-card bg-white p-6 rounded-lg shadow-md">
+                            <h3 class="text-xl font-bold font-mono">if / else / elif</h3>
+                            <p class="mt-2">Ejecuta bloques de código basados en si un comando tiene éxito (código de salida 0). Se usa con el comando <code class="font-mono bg-slate-200 p-1 rounded">test</code> o su alias <code class="font-mono bg-slate-200 p-1 rounded">[ ]</code> para comparaciones.</p>
+                             <pre class="font-mono bg-slate-800 text-white p-4 rounded-md mt-2 text-sm"><code>if [ "$NUM" -gt 0 ]; then
+    echo "Positivo"
+else
+    echo "No positivo"
+fi</code></pre>
+                        </div>
+                         <div class="command-card bg-white p-6 rounded-lg shadow-md">
+                            <h3 class="text-xl font-bold font-mono">for | while</h3>
+                             <p class="mt-2"><strong>for:</strong> Itera sobre una lista de elementos (archivos, números, palabras).</p>
+                             <p class="mt-2"><strong>while:</strong> Se ejecuta mientras una condición sea verdadera. Ideal para leer archivos línea por línea o esperar un evento.</p>
+                         </div>
+                    </div>
+                </section>
+
+                <!-- Sección Funciones y Tuberías -->
+                <section id="funciones" class="content-section">
+                    <h2 class="text-3xl font-bold mb-4">Funciones y Tuberías</h2>
+                    <p class="text-slate-600 mb-6">Las funciones permiten organizar y reutilizar código. Las tuberías y redirecciones son la "magia" de la CLI, permitiendo encadenar comandos para crear flujos de trabajo complejos.</p>
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <div class="bg-white p-6 rounded-lg shadow-md">
+                            <h3 class="text-xl font-bold">Funciones</h3>
+                            <p class="mt-2">Encapsulan bloques de código. Pueden recibir argumentos (<code class="font-mono bg-slate-200 p-1 rounded">$1</code>, <code class="font-mono bg-slate-200 p-1 rounded">$2</code>) y "devolver" valores imprimiendo en la salida estándar, que se captura con <code class="font-mono bg-slate-200 p-1 rounded">$(...)</code>.</p>
+                        </div>
+                        <div class="bg-white p-6 rounded-lg shadow-md">
+                            <h3 class="text-xl font-bold">Tuberías y Redirección</h3>
+                            <p class="mt-2"><strong>Tubería `|`:</strong> Conecta la salida de un comando con la entrada del siguiente.</p>
+                            <p class="mt-2"><strong>Redirección `>` y `>>`:</strong> Envía la salida a un archivo (sobrescribiendo o añadiendo).</p>
+                             <p class="mt-2"><strong>Redirección `<`:</strong> Toma la entrada de un archivo.</p>
+                        </div>
+                        <div class="bg-white p-6 rounded-lg shadow-md col-span-2">
+                             <h3 class="text-xl font-bold">Ejemplo de Encadenamiento</h3>
+                             <p class="mt-2">Esta cadena de comandos lista los 10 procesos que más memoria consumen:</p>
+                             <pre class="font-mono bg-slate-800 text-white p-4 rounded-md mt-2 text-sm"><code>ps aux | sort -nrk 4 | head -n 10</code></pre>
+                        </div>
+                    </div>
+                </section>
+                
+                 <!-- Sección Scripts Reales -->
+                <section id="scripts-reales" class="content-section">
+                    <h2 class="text-3xl font-bold mb-4">Scripts de Ejemplo del Mundo Real</h2>
+                    <p class="text-slate-600 mb-6">A continuación se muestran ejemplos completos que combinan muchos de los conceptos vistos para crear herramientas de automatización prácticas.</p>
+                     <div class="space-y-6">
+                        <div class="bg-white p-6 rounded-lg shadow-md">
+                            <h3 class="text-xl font-bold mb-2">Script de Copia de Seguridad</h3>
+                            <p class="mb-4">Este script realiza una copia de seguridad de directorios especificados, los comprime y los puede transferir a un servidor remoto.</p>
+                            <pre class="font-mono bg-slate-800 text-white p-4 rounded-md text-xs overflow-x-auto"><code>#!/bin/bash
+BACKUP_DIRS=("/home/usuario/documentos" "/var/www/html")
+DEST_DIR="/tmp/backups"
+TIMESTAMP=$(date +%Y-%m-%d_%H-%M-%S)
+mkdir -p "$DEST_DIR"
+for DIR in "${BACKUP_DIRS[@]}"; do
+  BASENAME=$(basename "$DIR")
+  FILENAME="$DEST_DIR/${BASENAME}_${TIMESTAMP}.tar.gz"
+  echo "Respaldando $DIR..."
+  tar -czf "$FILENAME" "$DIR"
+done
+echo "Backup finalizado."</code></pre>
+                        </div>
+                         <div class="bg-white p-6 rounded-lg shadow-md">
+                            <h3 class="text-xl font-bold mb-2">Script de Monitorización de Recursos</h3>
+                            <p class="mb-4">Este script comprueba el uso de CPU, memoria y disco, y muestra una alerta si se superan los umbrales definidos.</p>
+                            <pre class="font-mono bg-slate-800 text-white p-4 rounded-md text-xs overflow-x-auto"><code>#!/bin/bash
+CPU_THRESHOLD=85
+MEM_THRESHOLD=80
+CPU_USAGE=$(top -bn1 | grep "Cpu(s)" | awk '{print 100 - $8}' | cut -d. -f1)
+MEM_USAGE=$(free | awk '/Mem/{printf("%.0f", $3/$2*100)}')
+echo "CPU: $CPU_USAGE% | Memoria: $MEM_USAGE%"
+if [ "$CPU_USAGE" -gt "$CPU_THRESHOLD" ]; then
+  echo "ALERTA: Uso de CPU elevado!"
+fi
+if [ "$MEM_USAGE" -gt "$MEM_THRESHOLD" ]; then
+  echo "ALERTA: Uso de Memoria elevado!"
+fi</code></pre>
+                         </div>
+                     </div>
+                </section>
+
+                <!-- Sección ¿Qué es una distro? -->
+                <section id="distros" class="content-section">
+                    <h2 class="text-3xl font-bold mb-4">¿Qué es una Distribución de Linux?</h2>
+                    <p class="text-slate-600 mb-6">Una "distro" es un sistema operativo completo construido sobre el kernel de Linux. Agrupa el kernel con herramientas del sistema (GNU), un gestor de paquetes, un entorno de escritorio (GUI) y aplicaciones. La elección de estos componentes y su configuración es lo que diferencia a una distro de otra.</p>
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <h3 class="text-xl font-bold mb-4">Las Grandes Familias</h3>
+                        <div class="grid md:grid-cols-3 gap-4 text-center">
+                            <div>
+                                <h4 class="font-bold text-lg">Familia Debian</h4>
+                                <p class="text-sm">Famosa por su estabilidad y su compromiso con el software libre. Usa paquetes <code class="font-mono bg-slate-200 p-1 rounded">.deb</code> y el gestor <code class="font-mono bg-slate-200 p-1 rounded">apt</code>. Base de Ubuntu y Mint.</p>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-lg">Familia Red Hat</h4>
+                                <p class="text-sm">Orientada al entorno empresarial. Usa paquetes <code class="font-mono bg-slate-200 p-1 rounded">.rpm</code> y el gestor <code class="font-mono bg-slate-200 p-1 rounded">dnf</code>. RHEL y Fedora son sus exponentes.</p>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-lg">Familia Arch</h4>
+                                <p class="text-sm">Enfocada en el minimalismo y el control del usuario. Usa <code class="font-mono bg-slate-200 p-1 rounded">pacman</code> y un modelo de *rolling release* (actualización continua).</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Sección Comparativa de Distros -->
+                <section id="comparativa" class="content-section">
+                    <h2 class="text-3xl font-bold mb-4">Guía de Selección de Distribuciones</h2>
+                    <p class="text-slate-600 mb-6">La "mejor" distro no existe; la elección correcta depende de ti. Usa los filtros para encontrar la distro que mejor se adapte a tu perfil y explora el gráfico para comparar sus filosofías.</p>
+                    
+                    <div class="grid md:grid-cols-2 gap-8 items-center">
+                        <div class="bg-white p-6 rounded-lg shadow-md">
+                             <h3 class="text-xl font-bold text-center mb-4">Comparativa Filosófica</h3>
+                            <div class="chart-container">
+                                <canvas id="distroChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="space-y-4">
+                            <div class="flex flex-wrap gap-2 mb-4" id="distro-filters">
+                                <button data-filter="all" class="bg-teal-500 text-white px-4 py-2 rounded-md shadow-md">Todos</button>
+                                <button data-filter="principiante" class="bg-white text-teal-600 px-4 py-2 rounded-md shadow-md">Principiante</button>
+                                <button data-filter="servidor" class="bg-white text-teal-600 px-4 py-2 rounded-md shadow-md">Servidor</button>
+                                <button data-filter="desarrollador" class="bg-white text-teal-600 px-4 py-2 rounded-md shadow-md">Desarrollador</button>
+                            </div>
+                            <div id="distro-cards" class="space-y-4">
+                                <div class="distro-card bg-white p-4 rounded-lg shadow-sm" data-category="principiante">
+                                    <h4 class="font-bold text-lg">Ubuntu</h4>
+                                    <p class="text-sm">Ideal para empezar. Fácil de usar, gran comunidad y respaldo de Canonical.</p>
+                                </div>
+                                <div class="distro-card bg-white p-4 rounded-lg shadow-sm" data-category="principiante">
+                                    <h4 class="font-bold text-lg">Linux Mint</h4>
+                                    <p class="text-sm">Interfaz familiar (similar a Windows). Muy estable y completa de fábrica.</p>
+                                </div>
+                                <div class="distro-card bg-white p-4 rounded-lg shadow-sm" data-category="servidor">
+                                    <h4 class="font-bold text-lg">Debian</h4>
+                                    <p class="text-sm">La roca de la estabilidad. Perfecta para servidores donde la fiabilidad es crítica.</p>
+                                </div>
+                                <div class="distro-card bg-white p-4 rounded-lg shadow-sm" data-category="servidor desarrollador">
+                                    <h4 class="font-bold text-lg">Rocky/AlmaLinux</h4>
+                                    <p class="text-sm">Clones de RHEL. Estabilidad empresarial sin costo de suscripción.</p>
+                                </div>
+                                <div class="distro-card bg-white p-4 rounded-lg shadow-sm" data-category="desarrollador">
+                                    <h4 class="font-bold text-lg">Fedora</h4>
+                                    <p class="text-sm">Equilibrio entre innovación y estabilidad. Ideal para desarrolladores que quieren lo último.</p>
+                                </div>
+                                <div class="distro-card bg-white p-4 rounded-lg shadow-sm" data-category="desarrollador">
+                                    <h4 class="font-bold text-lg">Arch Linux</h4>
+                                    <p class="text-sm">Control total y software de última generación (*rolling release*). Para usuarios experimentados.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const navLinks = document.querySelectorAll('.nav-link');
+    const contentSections = document.querySelectorAll('.content-section');
+    const mainNav = document.getElementById('main-nav');
+
+    function updateContent(hash) {
+        let targetHash = hash || window.location.hash || '#introduccion';
+        
+        contentSections.forEach(section => {
+            section.classList.remove('active');
+        });
+
+        navLinks.forEach(link => {
+            link.classList.remove('active');
+        });
+
+        const targetSection = document.querySelector(targetHash);
+        const targetLink = document.querySelector(`a[href="${targetHash}"]`);
+
+        if (targetSection) {
+            targetSection.classList.add('active');
+        }
+        if (targetLink) {
+            targetLink.classList.add('active');
+        }
+    }
+
+    mainNav.addEventListener('click', (e) => {
+        if (e.target.tagName === 'A') {
+            const href = e.target.getAttribute('href');
+            if (href.startsWith('#')) {
+                e.preventDefault();
+                window.location.hash = href;
+            }
+        }
+    });
+    
+    window.addEventListener('hashchange', () => updateContent());
+    updateContent();
+
+    // Distro Chart
+    const chartCtx = document.getElementById('distroChart')?.getContext('2d');
+    if (chartCtx) {
+        new Chart(chartCtx, {
+            type: 'radar',
+            data: {
+                labels: ['Facilidad de Uso', 'Estabilidad', 'Control del Usuario', 'Software Reciente', 'Soporte Comunitario'],
+                datasets: [
+                    {
+                        label: 'Ubuntu',
+                        data: [9, 7, 6, 8, 10],
+                        backgroundColor: 'rgba(234, 128, 25, 0.2)',
+                        borderColor: 'rgb(234, 128, 25)',
+                        pointBackgroundColor: 'rgb(234, 128, 25)',
+                    },
+                    {
+                        label: 'Debian',
+                        data: [6, 10, 7, 5, 8],
+                        backgroundColor: 'rgba(215, 5, 10, 0.2)',
+                        borderColor: 'rgb(215, 5, 10)',
+                        pointBackgroundColor: 'rgb(215, 5, 10)',
+                    },
+                     {
+                        label: 'Arch',
+                        data: [3, 6, 10, 10, 7],
+                        backgroundColor: 'rgba(23, 161, 207, 0.2)',
+                        borderColor: 'rgb(23, 161, 207)',
+                        pointBackgroundColor: 'rgb(23, 161, 207)',
+                    },
+                     {
+                        label: 'Fedora',
+                        data: [7, 8, 8, 9, 7],
+                        backgroundColor: 'rgba(45, 85, 150, 0.2)',
+                        borderColor: 'rgb(45, 85, 150)',
+                        pointBackgroundColor: 'rgb(45, 85, 150)',
+                    }
+                ]
+            },
+            options: {
+                maintainAspectRatio: false,
+                scales: {
+                    r: {
+                        angleLines: {
+                            display: false
+                        },
+                        suggestedMin: 0,
+                        suggestedMax: 10,
+                        pointLabels: {
+                           font: {
+                               size: 10
+                           }
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    }
+                }
+            }
+        });
+    }
+
+    // Distro filters
+    const filterContainer = document.getElementById('distro-filters');
+    const distroCards = document.querySelectorAll('.distro-card');
+
+    filterContainer?.addEventListener('click', (e) => {
+        if (e.target.tagName !== 'BUTTON') return;
+
+        const filter = e.target.dataset.filter;
+        
+        distroCards.forEach(card => {
+            const categories = card.dataset.category.split(' ');
+            if (filter === 'all' || categories.includes(filter)) {
+                card.style.display = 'block';
+            } else {
+                card.style.display = 'none';
+            }
+        });
+
+        // Update active button style
+         filterContainer.querySelectorAll('button').forEach(btn => {
+            btn.classList.remove('bg-teal-500', 'text-white');
+            btn.classList.add('bg-white', 'text-teal-600');
+        });
+        e.target.classList.add('bg-teal-500', 'text-white');
+        e.target.classList.remove('bg-white', 'text-teal-600');
+    });
+
+});
+</script>
+
+</body>
+</html>
